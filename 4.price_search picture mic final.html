@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบค้นหาราคาสินค้า</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0d0f14;--surface:#161920;--surface2:#1e2330;--border:#2a3040;--accent:#f0a500;--accent2:#00d4aa;--text:#e8eaf0;--text-dim:#7a8099;--danger:#ff4d6d;--radius:10px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.page{display:none;min-height:100vh}
+.page.active{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+#search-page,#admin-page{justify-content:flex-start;align-items:stretch;padding:0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px;width:100%;max-width:440px;box-shadow:0 25px 60px rgba(0,0,0,.5)}
+.logo{text-align:center;margin-bottom:28px}
+.logo-icon{font-size:44px;margin-bottom:8px}
+.logo h1{font-size:20px;font-weight:700;color:var(--accent)}
+.logo p{font-size:13px;color:var(--text-dim);margin-top:4px}
+.tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--bg);padding:4px;border-radius:10px}
+.tab{flex:1;padding:9px;border:none;border-radius:8px;font-family:'Sarabun',sans-serif;font-size:14px;cursor:pointer;transition:all .2s;background:transparent;color:var(--text-dim);font-weight:500}
+.tab.active{background:var(--surface);color:var(--accent);font-weight:600}
+.form-group{margin-bottom:16px}
+label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+input[type=text],input[type=password],select{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius);padding:12px 16px;color:var(--text);font-family:'Sarabun',sans-serif;font-size:15px;transition:border-color .2s,box-shadow .2s;outline:none}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(240,165,0,.12)}
+.btn{width:100%;padding:13px;border:none;border-radius:var(--radius);font-family:'Sarabun',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#d4930a);color:#0d0f14}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(240,165,0,.3)}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--border)}
+.error-msg{background:rgba(255,77,109,.12);border:1px solid rgba(255,77,109,.3);border-radius:8px;padding:11px;font-size:13px;color:var(--danger);margin-top:12px;text-align:center;display:none}
+
+/* TOP BAR */
+.top-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.app-title{font-size:16px;font-weight:700;color:var(--accent)}
+.user-badge{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 14px;font-size:13px;color:var(--text-dim)}
+.user-badge span{color:var(--text);font-weight:600}
+.top-bar-right{display:flex;gap:8px;align-items:center}
+.toggle-group{display:flex;gap:4px;align-items:center;background:var(--bg);padding:3px;border-radius:8px}
+.price-toggle{padding:6px 12px;border:none;border-radius:6px;font-family:'Sarabun',sans-serif;font-size:12px;cursor:pointer;transition:all .2s;background:transparent;color:var(--text-dim);font-weight:500}
+.price-toggle.active{background:var(--surface);color:var(--accent2);font-weight:600}
+.price-toggle:disabled{opacity:.35;cursor:not-allowed}
+.top-btn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 14px;color:var(--text);font-family:'Sarabun',sans-serif;font-size:13px;cursor:pointer;transition:all .2s}
+.top-btn:hover{background:var(--border)}
+
+/* SEARCH */
+.search-container{flex:1;padding:20px;max-width:960px;width:100%;margin:0 auto}
+.search-box{position:relative;margin-bottom:16px}
+.search-icon{position:absolute;left:16px;top:50%;transform:translateY(-50%);font-size:17px;color:var(--text-dim);pointer-events:none}
+.mic-btn{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:20px;color:var(--text-dim);padding:4px 6px;border-radius:8px;transition:all .2s;line-height:1}
+.mic-btn:hover{color:var(--accent);background:rgba(240,165,0,.1)}
+.mic-btn.listening{color:var(--danger);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+#search-input{width:100%;padding:15px 50px 15px 50px;background:var(--surface);border:1.5px solid var(--border);border-radius:12px;font-size:16px;color:var(--text);font-family:'Sarabun',sans-serif;outline:none;transition:all .2s}
+
+#search-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(240,165,0,.12)}
+.results-info{font-size:13px;color:var(--text-dim);margin-bottom:12px;padding:0 2px}
+.results-info span{color:var(--accent);font-weight:600;font-family:'IBM Plex Mono',monospace}
+.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.product-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.product-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));opacity:0;transition:opacity .2s}
+.product-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.product-card:hover::before{opacity:1}
+.card-img-wrap{width:100%;height:140px;border-radius:8px;overflow:hidden;margin-bottom:12px;background:var(--surface2);display:flex;align-items:center;justify-content:center}
+.card-img{width:100%;height:100%;object-fit:cover;display:block}
+.card-img-placeholder{font-size:36px;color:var(--border)}
+.product-barcode{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim);margin-bottom:7px;letter-spacing:.5px}
+.product-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:12px;line-height:1.4;min-height:40px}
+.price-row{display:flex;gap:7px;flex-wrap:wrap}
+.price-badge{display:flex;flex-direction:column;background:var(--surface2);border-radius:8px;padding:7px 11px;flex:1;min-width:85px}
+.price-label{font-size:10px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px}
+.price-value{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:700;color:var(--accent)}
+.price-badge.ws .price-value{color:var(--accent2)}
+.no-results{text-align:center;padding:60px 20px;color:var(--text-dim);grid-column:1/-1}
+.no-results .nri{font-size:44px;margin-bottom:12px}
+.loading{text-align:center;padding:60px;color:var(--text-dim);grid-column:1/-1;font-size:15px}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.active{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:660px;max-height:90vh;overflow-y:auto;box-shadow:0 40px 80px rgba(0,0,0,.6);animation:slideUp .25s ease}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.modal-header{padding:22px 22px 0;display:flex;justify-content:space-between;align-items:flex-start}
+.modal-close{background:var(--surface2);border:none;color:var(--text-dim);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.modal-close:hover{background:var(--border);color:var(--text)}
+.modal-body{padding:22px}
+.detail-barcode{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text-dim);letter-spacing:1px;background:var(--bg);padding:3px 10px;border-radius:4px;display:inline-block;margin-bottom:10px}
+.detail-name{font-size:20px;font-weight:700;color:var(--text);line-height:1.3;margin-bottom:18px}
+.detail-prices{display:flex;gap:11px;margin-bottom:22px;flex-wrap:wrap}
+.detail-price-card{flex:1;min-width:130px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px}
+.detail-price-card.retail{border-color:rgba(240,165,0,.3)}
+.detail-price-card.ws{border-color:rgba(0,212,170,.3)}
+.dpl{font-size:11px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}
+.dpv{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700}
+.detail-price-card.retail .dpv{color:var(--accent)}
+.detail-price-card.ws .dpv{color:var(--accent2)}
+hr.div{border:none;border-top:1px solid var(--border);margin:18px 0}
+.sec-title{font-size:12px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.image-gallery{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:14px}
+.img-thumb{width:86px;height:86px;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:pointer;transition:all .2s}
+.img-thumb:hover{border-color:var(--accent)}
+.add-img-btn{width:86px;height:86px;background:var(--surface2);border:2px dashed var(--border);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--text-dim);font-size:22px;transition:all .2s}
+.add-img-btn:hover{border-color:var(--accent);color:var(--accent)}
+.add-img-btn small{font-size:10px;margin-top:3px}
+.notes-display{background:var(--bg);border-radius:10px;padding:12px;min-height:60px;font-size:14px;color:var(--text);line-height:1.6;white-space:pre-wrap}
+.notes-empty{color:var(--text-dim);font-style:italic;font-size:13px}
+textarea.notes-edit{width:100%;background:var(--bg);border:1.5px solid var(--accent);border-radius:10px;padding:12px;color:var(--text);font-family:'Sarabun',sans-serif;font-size:14px;line-height:1.6;resize:vertical;min-height:90px;outline:none}
+.edit-btn{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 12px;color:var(--text-dim);font-size:12px;cursor:pointer;font-family:'Sarabun',sans-serif;transition:all .2s}
+.edit-btn:hover{border-color:var(--accent);color:var(--accent)}
+.save-btn-sm{background:var(--accent);border:none;border-radius:6px;padding:4px 14px;color:#0d0f14;font-size:12px;cursor:pointer;font-family:'Sarabun',sans-serif;font-weight:600}
+
+/* ADMIN */
+.admin-container{flex:1;padding:22px;max-width:780px;width:100%;margin:0 auto}
+.admin-section{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;margin-bottom:18px}
+.admin-section h3{font-size:14px;font-weight:700;color:var(--accent);margin-bottom:16px;padding-bottom:11px;border-bottom:1px solid var(--border)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.user-table{width:100%;border-collapse:collapse}
+.user-table th{text-align:left;font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.8px;padding:9px 11px;border-bottom:1px solid var(--border);font-weight:600}
+.user-table td{padding:11px;border-bottom:1px solid rgba(255,255,255,.04);font-size:14px;vertical-align:middle}
+.user-table tr:last-child td{border-bottom:none}
+.user-table tr:hover td{background:rgba(255,255,255,.02)}
+.role-badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.role-admin{background:rgba(240,165,0,.15);color:var(--accent)}
+.role-member{background:rgba(0,212,170,.1);color:var(--accent2)}
+.perm-select{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:5px 9px;color:var(--text);font-family:'Sarabun',sans-serif;font-size:13px;outline:none;cursor:pointer}
+.perm-select:focus{border-color:var(--accent)}
+.btn-del{padding:5px 10px;border:1px solid rgba(255,77,109,.25);border-radius:6px;font-size:12px;cursor:pointer;font-family:'Sarabun',sans-serif;background:rgba(255,77,109,.1);color:var(--danger);transition:all .2s}
+.btn-del:hover{background:rgba(255,77,109,.22)}
+
+/* TOAST */
+.toast-wrap{position:fixed;bottom:22px;right:22px;z-index:500;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:13px 18px;font-size:14px;color:var(--text);box-shadow:0 8px 24px rgba(0,0,0,.4);animation:toastIn .3s ease;max-width:290px}
+.toast.ok{border-color:rgba(0,212,170,.4)}
+.toast.err{border-color:rgba(255,77,109,.4);color:var(--danger)}
+@keyframes toastIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
+.hidden{display:none!important}
+
+/* lightbox */
+#lightbox img{max-width:90%;max-height:90%;border-radius:12px;object-fit:contain}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="page active" id="login-page">
+  <div class="card">
+    <div class="logo">
+      <div class="logo-icon">🔌</div>
+      <h1>PriceSearch Pro</h1>
+      <p>ระบบค้นหาราคาสินค้า</p>
+    </div>
+    <div class="form-group">
+      <label>ชื่อผู้ใช้</label>
+      <input type="text" id="lu" placeholder="username" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>รหัสผ่าน</label>
+      <input type="password" id="lp" placeholder="password" autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">เข้าสู่ระบบ</button>
+    <div class="error-msg" id="login-err"></div>
+</div>
+</div>
+
+<!-- SEARCH -->
+<div class="page" id="search-page">
+  <div class="top-bar">
+    <div style="display:flex;align-items:center;gap:14px">
+      <div class="app-title">🔌 PriceSearch</div>
+      <div class="user-badge">สวัสดี, <span id="header-user"></span></div>
+    </div>
+    <div class="top-bar-right">
+      <div class="toggle-group">
+        <button class="price-toggle active" id="tog1" onclick="toggleP(1)">ราคาขาย</button>
+        <button class="price-toggle active" id="tog2" onclick="toggleP(2)">ราคาส่ง</button>
+      </div>
+      <button class="top-btn hidden" id="admin-btn" onclick="goAdmin()">⚙ แอดมิน</button>
+      <button class="top-btn" onclick="doLogout()">ออก</button>
+    </div>
+  </div>
+  <div class="search-container">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="search-input" placeholder="ค้นหาชื่อสินค้าหรือบาร์โค้ด..." oninput="doSearch(this.value)">
+      <button class="mic-btn" id="mic-btn" onclick="toggleMic()" title="ค้นหาด้วยเสียง">🎤</button>
+    </div>
+    <div class="results-info" id="res-info"></div>
+    <div class="products-grid" id="grid"><div class="loading">⏳ กำลังโหลดข้อมูลสินค้า...</div></div>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div class="page" id="admin-page">
+  <div class="top-bar">
+    <div class="app-title">⚙ แผงแอดมิน</div>
+    <div class="top-bar-right">
+      <button class="top-btn" onclick="goSearch()">← กลับ</button>
+      <button class="top-btn" onclick="doLogout()">ออก</button>
+    </div>
+  </div>
+  <div class="admin-container">
+    <div class="admin-section">
+      <h3>➕ เพิ่มผู้ใช้ใหม่</h3>
+      <div class="grid-2">
+        <div class="form-group" style="margin:0"><label>ชื่อผู้ใช้</label><input type="text" id="nu" placeholder="username"></div>
+        <div class="form-group" style="margin:0"><label>รหัสผ่าน</label><input type="password" id="np" placeholder="password"></div>
+        <div class="form-group" style="margin:0"><label>สิทธิ์</label>
+          <select id="nr"><option value="member">สมาชิก</option><option value="admin">แอดมิน</option></select>
+        </div>
+        <div class="form-group" style="margin:0"><label>ราคาที่เห็น</label>
+          <select id="nperm"><option value="both">ทั้งสองราคา</option><option value="retail">ราคาขายเท่านั้น</option><option value="wholesale">ราคาส่งเท่านั้น</option></select>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:14px;max-width:180px" onclick="addUser()">เพิ่มผู้ใช้</button>
+      <div class="error-msg" id="au-err"></div>
+    </div>
+    <div class="admin-section">
+      <h3>👥 รายชื่อผู้ใช้</h3>
+      <table class="user-table">
+        <thead><tr><th>ชื่อผู้ใช้</th><th>สิทธิ์</th><th>ราคาที่เห็น</th><th>จัดการ</th></tr></thead>
+        <tbody id="utbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCT MODAL -->
+<div class="modal-overlay" id="prod-modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="detail-barcode" id="m-bar"></div>
+        <div class="detail-name" id="m-name"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-prices" id="m-prices"></div>
+      <hr class="div">
+      <div class="sec-title"><span>🖼 รูปภาพ</span></div>
+      <div class="image-gallery" id="m-imgs"></div>
+      <input type="file" id="img-upload" accept="image/*" class="hidden" onchange="handleImgUpload(event)">
+      <hr class="div">
+      <div class="sec-title"><span>📝 ข้อมูลเพิ่มเติม</span><div id="notes-act"></div></div>
+      <div id="notes-area"></div>
+    </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="modal-overlay" id="lightbox" onclick="closeLightbox()">
+  <img id="lb-img" src="" alt="">
+</div>
+
+<!-- TOASTS -->
+<div class="toast-wrap" id="toasts"></div>
+
+<script>
+// ---- DB ----
+const KEY = 'psp_v2';
+
+function getDB(){
+  try{ const d=localStorage.getItem(KEY); return d?JSON.parse(d):null; }catch(e){ return null; }
+}
+function saveDB(db){ localStorage.setItem(KEY,JSON.stringify(db)); }
+
+function initDB(){
+  let db = getDB();
+  if(!db) db = { users:[], extras:{} };
+  if(!db.extras) db.extras={};
+  if(!db.users) db.users=[];
+  // ensure admin always exists
+  if(!db.users.find(u=>u.username==='admin')){
+    db.users.unshift({username:'admin',password:'admin1234',role:'admin',perm:'both'});
+  }
+  saveDB(db);
+  return db;
+}
+
+function resetDB(){
+  if(!confirm('รีเซ็ตข้อมูลทั้งหมด?')) return;
+  localStorage.removeItem(KEY);
+  DB = initDB();
+  toast('✅ รีเซ็ตแล้ว ใช้ admin / admin1234','ok');
+}
+
+let DB = initDB();
+
+// ---- STATE ----
+let me = null;
+let PRODUCTS = [];
+let showP1=true, showP2=true;
+let curPid=null;
+
+// ---- TABS ----
+function showTab(t){
+  document.getElementById('tab-login').classList.toggle('hidden', t!=='login');
+  document.getElementById('tab-reg').classList.toggle('hidden', t!=='reg');
+  document.getElementById('tab-btn-login').classList.toggle('active', t==='login');
+  document.getElementById('tab-btn-reg').classList.toggle('active', t==='reg');
+}
+
+// ---- AUTH ----
+function doLogin(){
+  const u=document.getElementById('lu').value.trim();
+  const p=document.getElementById('lp').value;
+  const err=document.getElementById('login-err');
+  err.style.display='none';
+  if(!u||!p){ showE(err,'กรุณากรอกข้อมูลให้ครบ'); return; }
+  const user=DB.users.find(x=>x.username===u&&x.password===p);
+  if(!user){ showE(err,'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'); return; }
+  me=user;
+  applyPerm(user.perm);
+  document.getElementById('header-user').textContent=user.username;
+  document.getElementById('admin-btn').classList.toggle('hidden', user.role!=='admin');
+  showPage('search-page');
+  if(PRODUCTS.length) renderSearch('');
+}
+
+function doRegister(){
+  const u=document.getElementById('ru').value.trim();
+  const p=document.getElementById('rp').value;
+  const p2=document.getElementById('rp2').value;
+  const err=document.getElementById('reg-err');
+  err.style.display='none';
+  if(!u||!p){ showE(err,'กรุณากรอกข้อมูลให้ครบ'); return; }
+  if(p!==p2){ showE(err,'รหัสผ่านไม่ตรงกัน'); return; }
+  if(DB.users.find(x=>x.username===u)){ showE(err,'ชื่อผู้ใช้นี้มีอยู่แล้ว'); return; }
+  DB.users.push({username:u,password:p,role:'member',perm:'both'});
+  saveDB(DB);
+  toast('✅ สมัครสมาชิกสำเร็จ กรุณาเข้าสู่ระบบ','ok');
+  showTab('login');
+}
+
+function doLogout(){
+  me=null; showPage('login-page');
+  document.getElementById('lu').value='';
+  document.getElementById('lp').value='';
+}
+
+// ---- PAGES ----
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function goAdmin(){ renderUtable(); showPage('admin-page'); }
+function goSearch(){ showPage('search-page'); }
+
+// ---- PRICE PERM ----
+function applyPerm(perm){
+  const t1=document.getElementById('tog1'), t2=document.getElementById('tog2');
+  if(perm==='retail'){
+    showP1=true; showP2=false;
+    t1.classList.add('active'); t2.classList.remove('active');
+    t1.disabled=true; t2.disabled=true;
+  } else if(perm==='wholesale'){
+    showP1=false; showP2=true;
+    t1.classList.remove('active'); t2.classList.add('active');
+    t1.disabled=true; t2.disabled=true;
+  } else {
+    showP1=true; showP2=true;
+    t1.classList.add('active'); t2.classList.add('active');
+    t1.disabled=false; t2.disabled=false;
+  }
+}
+
+function toggleP(w){
+  if(me&&me.perm!=='both') return;
+  if(w===1){ showP1=!showP1; document.getElementById('tog1').classList.toggle('active',showP1); }
+  else { showP2=!showP2; document.getElementById('tog2').classList.toggle('active',showP2); }
+  if(!showP1&&!showP2){ showP1=true; document.getElementById('tog1').classList.add('active'); }
+  doSearch(document.getElementById('search-input').value);
+}
+
+// ---- LOAD PRODUCTS (fetch JSON) ----
+async function loadProducts(){
+  try {
+    const r = await fetch('products_data.json');
+    const raw = await r.json();
+    // raw = [[id,barcode,name,p1,p2],...]
+    PRODUCTS = raw.map(a=>({id:a[0],barcode:a[1],name:a[2],p1:a[3],p2:a[4]}));
+    if(me) renderSearch('');
+  } catch(e){
+    document.getElementById('grid').innerHTML='<div class="no-results"><div class="nri">⚠️</div><p>โหลดข้อมูลสินค้าไม่ได้<br><small>'+e.message+'</small></p></div>';
+  }
+}
+
+// ---- SEARCH ----
+let stimer=null;
+function doSearch(q){ clearTimeout(stimer); stimer=setTimeout(()=>renderSearch(q.trim()),80); }
+
+function renderSearch(q){
+  const ql=q.toLowerCase();
+  const res=q? PRODUCTS.filter(p=>p.name.toLowerCase().includes(ql)||p.barcode.includes(ql)) : PRODUCTS;
+  const info=document.getElementById('res-info');
+  info.innerHTML=q?`พบ <span>${res.length.toLocaleString()}</span> รายการ`:`สินค้าทั้งหมด <span>${res.length.toLocaleString()}</span> รายการ`;
+  const disp=res.slice(0,200);
+  if(!disp.length){
+    document.getElementById('grid').innerHTML='<div class="no-results"><div class="nri">🔍</div><p>ไม่พบสินค้าที่ค้นหา</p></div>';
+    return;
+  }
+  document.getElementById('grid').innerHTML=disp.map(p=>{
+    let ph='';
+    if(showP1&&p.p1) ph+=`<div class="price-badge"><div class="price-label">ราคาขาย</div><div class="price-value">${fmt(p.p1)}</div></div>`;
+    if(showP2&&p.p2) ph+=`<div class="price-badge ws"><div class="price-label">ราคาส่ง</div><div class="price-value">${fmt(p.p2)}</div></div>`;
+    const ex=DB.extras[p.id];
+    const imgHtml=ex&&ex.imgs&&ex.imgs.length
+      ?`<div class="card-img-wrap"><img class="card-img" src="${esc(ex.imgs[0])}" alt=""></div>`
+      :`<div class="card-img-wrap card-img-placeholder">📦</div>`;
+    return `<div class="product-card" onclick="openProd(${p.id})">
+      ${imgHtml}
+      <div class="product-barcode">${esc(p.barcode)}</div>
+      <div class="product-name">${esc(p.name)}</div>
+      <div class="price-row">${ph}</div>
+    </div>`;
+  }).join('');
+}
+
+// ---- PRODUCT MODAL ----
+function openProd(pid){
+  const p=PRODUCTS.find(x=>x.id===pid); if(!p) return;
+  curPid=pid;
+  document.getElementById('m-bar').textContent=p.barcode;
+  document.getElementById('m-name').textContent=p.name;
+  let ph='';
+  if(showP1&&p.p1) ph+=`<div class="detail-price-card retail"><div class="dpl">ราคาขาย</div><div class="dpv">${fmt(p.p1)} ฿</div></div>`;
+  if(showP2&&p.p2) ph+=`<div class="detail-price-card ws"><div class="dpl">ราคาส่ง</div><div class="dpv">${fmt(p.p2)} ฿</div></div>`;
+  document.getElementById('m-prices').innerHTML=ph;
+  renderExtras(pid);
+  document.getElementById('prod-modal').classList.add('active');
+}
+
+function renderExtras(pid){
+  const ex=DB.extras[pid]||{imgs:[],notes:''};
+  const isA=me&&me.role==='admin';
+  let ih=ex.imgs.map((s,i)=>`<img class="img-thumb" src="${esc(s)}" onclick="openLb('${esc(s)}')" alt="${i+1}">`).join('');
+  if(isA) ih+=`<div class="add-img-btn" onclick="document.getElementById('img-upload').click()"><span>+</span><small>เพิ่มรูป</small></div>`;
+  document.getElementById('m-imgs').innerHTML=ih;
+  document.getElementById('notes-act').innerHTML=isA?`<button class="edit-btn" onclick="startEditN()">✏ แก้ไข</button>`:'';
+  const na=document.getElementById('notes-area');
+  na.innerHTML=ex.notes?`<div class="notes-display">${esc(ex.notes)}</div>`:`<div class="notes-display notes-empty">${isA?'คลิก "แก้ไข" เพื่อเพิ่มข้อมูล':'ยังไม่มีข้อมูล'}</div>`;
+}
+
+function startEditN(){
+  const ex=DB.extras[curPid]||{imgs:[],notes:''};
+  document.getElementById('notes-area').innerHTML=`<textarea class="notes-edit" id="ntxt">${esc(ex.notes)}</textarea>`;
+  document.getElementById('notes-act').innerHTML=`<button class="save-btn-sm" onclick="saveN()">💾 บันทึก</button> <button class="edit-btn" onclick="renderExtras(curPid)">ยกเลิก</button>`;
+}
+
+function saveN(){
+  const txt=document.getElementById('ntxt').value;
+  if(!DB.extras[curPid]) DB.extras[curPid]={imgs:[],notes:''};
+  DB.extras[curPid].notes=txt; saveDB(DB);
+  toast('💾 บันทึกแล้ว','ok'); renderExtras(curPid);
+}
+
+function handleImgUpload(e){
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    if(!DB.extras[curPid]) DB.extras[curPid]={imgs:[],notes:''};
+    DB.extras[curPid].imgs.push(ev.target.result); saveDB(DB);
+    toast('🖼 อัพโหลดรูปสำเร็จ','ok'); renderExtras(curPid);
+  };
+  r.readAsDataURL(f); e.target.value='';
+}
+
+function closeModal(){ document.getElementById('prod-modal').classList.remove('active'); curPid=null; }
+function openLb(s){ document.getElementById('lb-img').src=s; document.getElementById('lightbox').classList.add('active'); }
+function closeLightbox(){ document.getElementById('lightbox').classList.remove('active'); }
+
+// ---- ADMIN ----
+function renderUtable(){
+  document.getElementById('utbody').innerHTML=DB.users.map((u,i)=>{
+    const isMe=me&&u.username===me.username;
+    return `<tr>
+      <td><strong>${esc(u.username)}</strong>${isMe?' <small style="color:var(--accent2)">(คุณ)</small>':''}</td>
+      <td><span class="role-badge role-${u.role}">${u.role==='admin'?'แอดมิน':'สมาชิก'}</span></td>
+      <td><select class="perm-select" onchange="chPerm(${i},this.value)">
+        <option value="both" ${u.perm==='both'?'selected':''}>ทั้งสองราคา</option>
+        <option value="retail" ${u.perm==='retail'?'selected':''}>ราคาขาย</option>
+        <option value="wholesale" ${u.perm==='wholesale'?'selected':''}>ราคาส่ง</option>
+      </select></td>
+      <td>${isMe?'—':`<button class="btn-del" onclick="delUser(${i})">ลบ</button>`}</td>
+    </tr>`;
+  }).join('');
+}
+
+function chPerm(i,perm){
+  DB.users[i].perm=perm;
+  if(DB.users[i].username===me.username){ me.perm=perm; applyPerm(perm); doSearch(document.getElementById('search-input').value); }
+  saveDB(DB); toast('✅ อัพเดตสิทธิ์แล้ว','ok');
+}
+
+function delUser(i){
+  if(DB.users[i].username===me.username){ toast('❌ ไม่สามารถลบตัวเองได้','err'); return; }
+  if(!confirm('ลบผู้ใช้ '+DB.users[i].username+'?')) return;
+  DB.users.splice(i,1); saveDB(DB); renderUtable(); toast('🗑 ลบแล้ว','ok');
+}
+
+function addUser(){
+  const u=document.getElementById('nu').value.trim();
+  const p=document.getElementById('np').value;
+  const role=document.getElementById('nr').value;
+  const perm=document.getElementById('nperm').value;
+  const err=document.getElementById('au-err');
+  err.style.display='none';
+  if(!u||!p){ showE(err,'กรุณากรอกข้อมูลให้ครบ'); return; }
+  if(DB.users.find(x=>x.username===u)){ showE(err,'ชื่อผู้ใช้นี้มีอยู่แล้ว'); return; }
+  DB.users.push({username:u,password:p,role,perm}); saveDB(DB);
+  document.getElementById('nu').value=''; document.getElementById('np').value='';
+  renderUtable(); toast('✅ เพิ่มผู้ใช้แล้ว','ok');
+}
+
+// ---- UTILS ----
+function showE(el,msg){ el.textContent=msg; el.style.display='block'; }
+function fmt(v){ const n=parseFloat(v); return isNaN(n)?v:n%1===0?n.toLocaleString():n.toFixed(2); }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(msg,type='ok'){
+  const c=document.getElementById('toasts');
+  const t=document.createElement('div');
+  t.className='toast '+type; t.textContent=msg; c.appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .4s'; setTimeout(()=>t.remove(),400); },2500);
+}
+
+// Keyboard
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    if(document.getElementById('lightbox').classList.contains('active')) closeLightbox();
+    else if(document.getElementById('prod-modal').classList.contains('active')) closeModal();
+  }
+  if(e.key==='Enter'&&document.getElementById('login-page').classList.contains('active')) doLogin();
+});
+
+// ---- VOICE SEARCH ----
+let recognition = null;
+let isListening = false;
+
+function initSpeech(){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SpeechRecognition){
+    document.getElementById('mic-btn').title='เบราว์เซอร์ไม่รองรับการค้นหาด้วยเสียง';
+    document.getElementById('mic-btn').style.opacity='0.3';
+    document.getElementById('mic-btn').style.cursor='not-allowed';
+    return;
+  }
+  recognition = new SpeechRecognition();
+  recognition.lang = 'th-TH';
+  recognition.continuous = false;
+  recognition.interimResults = true;
+
+  recognition.onstart = () => {
+    isListening = true;
+    const btn = document.getElementById('mic-btn');
+    btn.classList.add('listening');
+    btn.textContent = '🔴';
+    btn.title = 'กำลังฟัง... คลิกเพื่อหยุด';
+    document.getElementById('search-input').placeholder = 'กำลังฟังเสียง...';
+  };
+
+  recognition.onresult = (e) => {
+    const transcript = Array.from(e.results).map(r=>r[0].transcript).join('');
+    document.getElementById('search-input').value = transcript;
+    doSearch(transcript);
+  };
+
+  recognition.onend = () => {
+    isListening = false;
+    const btn = document.getElementById('mic-btn');
+    btn.classList.remove('listening');
+    btn.textContent = '🎤';
+    btn.title = 'ค้นหาด้วยเสียง';
+    document.getElementById('search-input').placeholder = 'ค้นหาชื่อสินค้าหรือบาร์โค้ด...';
+  };
+
+  recognition.onerror = (e) => {
+    isListening = false;
+    const btn = document.getElementById('mic-btn');
+    btn.classList.remove('listening');
+    btn.textContent = '🎤';
+    const msgs = {
+      'not-allowed': '❌ ไม่ได้รับอนุญาตใช้ไมค์ กรุณาอนุญาตในเบราว์เซอร์',
+      'no-speech': '🔇 ไม่ได้ยินเสียง ลองอีกครั้ง',
+      'network': '⚠️ เกิดข้อผิดพลาดเครือข่าย'
+    };
+    toast(msgs[e.error]||'❌ เกิดข้อผิดพลาด: '+e.error, 'err');
+  };
+}
+
+function toggleMic(){
+  if(!recognition){ toast('❌ เบราว์เซอร์ไม่รองรับการค้นหาด้วยเสียง','err'); return; }
+  if(isListening){ recognition.stop(); }
+  else { recognition.start(); }
+}
+
+// ---- BOOT ----
+loadProducts();
+initSpeech();
+</script>
+</body>
+</html>
